@@ -1,0 +1,45 @@
+// Genres an article can be tagged with. The create/edit form only accepts
+// values from this list. The artists filter uses GET /genres/ instead, which
+// returns the genres actually used in articles.
+export const GENRES = [
+  'alternative',
+  'ambient',
+  'blues',
+  'classical',
+  'country',
+  'disco',
+  'drum and bass',
+  'dubstep',
+  'electronic',
+  'folk',
+  'funk',
+  'gospel',
+  'grunge',
+  'hard rock',
+  'hip hop',
+  'house',
+  'indie',
+  'jazz',
+  'k-pop',
+  'latin',
+  'metal',
+  'metalcore',
+  'pop',
+  'pop rock',
+  'post-rock',
+  'progressive metal',
+  'progressive rock',
+  'punk',
+  'r&b',
+  'rap',
+  'reggae',
+  'rock',
+  'soul',
+  'soundtrack',
+  'techno',
+  'trance',
+  'world',
+];
+
+// Shown first in the form's suggestions.
+export const POPULAR_GENRES = ['rock', 'pop', 'jazz', 'hip hop', 'electronic', 'metal', 'indie', 'folk'];
