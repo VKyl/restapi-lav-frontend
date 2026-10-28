@@ -522,6 +522,20 @@ img, svg { display: block; }
   font: inherit;
 }
 .search-box input::placeholder { color: var(--muted); }
+.search-box select {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  outline: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-transform: capitalize;
+  cursor: pointer;
+}
+.search-box select:disabled { color: var(--muted); cursor: default; }
+.search-box select option { background: var(--surface); color: var(--text); }
 .search-box input[type='date']::-webkit-calendar-picker-indicator { filter: invert(0.7); cursor: pointer; }
 
 .quick-genres { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 6px; }
@@ -788,6 +802,7 @@ input[type='datetime-local']::-webkit-calendar-picker-indicator { filter: invert
 .tag-input.is-invalid { border-color: var(--red); }
 .tag-input input { flex: 1; min-width: 120px; border: 0; outline: 0; background: none; color: var(--text); font: inherit; padding: 4px; }
 .tag-input input::placeholder { color: #6a657d; }
+.tag-input-hint { margin: 6px 0 0; }
 .suggestions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .suggestion {
   padding: 3px 10px;

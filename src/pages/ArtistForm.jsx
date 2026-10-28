@@ -8,7 +8,7 @@ import TagInput from '../components/TagInput.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { ErrorState, FormError, Loader } from '../components/States.jsx';
 import { errorFor, focusField } from '../utils/errors.js';
-import { POPULAR_GENRES } from './ArtistsList.jsx';
+import { GENRES, POPULAR_GENRES } from '../utils/genres.js';
 
 const LIMITS = { artist: 200, genres: 10, genre: 50, sections: 50, title: 200, content: 20000 };
 
@@ -157,7 +157,7 @@ export default function ArtistForm() {
           <Field
             label="Genres"
             error={errorFor(error, 'genres', { prefix: true })}
-            hint={`Press Enter to add. Up to ${LIMITS.genres} genres.`}
+            hint={`Pick from the list. Up to ${LIMITS.genres} genres.`}
             count={genres.length}
             max={LIMITS.genres}
           >
@@ -167,7 +167,8 @@ export default function ArtistForm() {
               onChange={setGenres}
               max={LIMITS.genres}
               maxLength={LIMITS.genre}
-              placeholder="jazz, soul, blues…"
+              placeholder="Type to find a genre…"
+              options={GENRES}
               suggestions={POPULAR_GENRES}
               invalid={Boolean(errorFor(error, 'genres', { prefix: true }))}
             />
