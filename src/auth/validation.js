@@ -1,25 +1,28 @@
 // Client-side checks for the sign-in and sign-up forms.
 // The backend must run the same checks; these just give instant feedback.
 
+// Same limits as the backend (kmartists/domain/users.py).
 export const LIMITS = {
-  username: 150,
-  first_name: 150,
-  last_name: 150,
+  username: 50,
+  first_name: 100,
+  last_name: 100,
   email: 254,
   password: 128,
 };
 export const PASSWORD_MIN = 8;
 
-const USERNAME_RE = /^[\w.@+-]+$/;
+// Letters (any alphabet), digits and . + - _. The backend forbids @ so usernames never look like emails.
+const USERNAME_RE = /^[\p{L}\p{N}_.+-]+$/u;
 // name@example.com: something, @, a domain with at least one dot, no spaces.
 const EMAIL_RE = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/;
 
 export function passwordChecks(pw) {
   return [
     { id: 'length', label: `At least ${PASSWORD_MIN} characters`, ok: pw.length >= PASSWORD_MIN },
-    { id: 'case', label: 'Upper- and lowercase letters', ok: /[a-z]/.test(pw) && /[A-Z]/.test(pw) },
-    { id: 'number', label: 'At least one number', ok: /\d/.test(pw) },
-    { id: 'symbol', label: 'A symbol, like ! or #', ok: /[^A-Za-z0-9]/.test(pw), optional: true },
+    // Unicode-aware, like the backend's str.islower()/isupper()/isdigit().
+    { id: 'case', label: 'Upper- and lowercase letters', ok: /\p{Ll}/u.test(pw) && /\p{Lu}/u.test(pw) },
+    { id: 'number', label: 'At least one number', ok: /\p{Nd}/u.test(pw) },
+    { id: 'symbol', label: 'A symbol, like ! or #', ok: /[^\p{L}\p{N}]/u.test(pw), optional: true },
   ];
 }
 
@@ -32,7 +35,7 @@ export function validateRegister(form, { withPassword = true } = {}) {
   const username = form.username.trim();
   if (!username) errors.username = 'Choose a username.';
   else if (tooLong(username, 'username')) errors.username = tooLong(username, 'username');
-  else if (!USERNAME_RE.test(username)) errors.username = 'Use only letters, numbers and @ . + - _ (no spaces).';
+  else if (!USERNAME_RE.test(username)) errors.username = /@/.test(username) ? 'Username can’t contain @.' : 'Use only letters, numbers and . + - _ (no spaces).';
 
   for (const field of ['first_name', 'last_name']) {
     const msg = tooLong(form[field].trim(), field);
@@ -45,6 +48,7 @@ export function validateRegister(form, { withPassword = true } = {}) {
   else if (!EMAIL_RE.test(email)) errors.email = 'Enter a valid email, like name@example.com.';
 
   if (!withPassword) return errors;
+
 
   const pw = form.password;
   if (!pw) errors.password = 'Create a password.';
@@ -64,7 +68,7 @@ export const isEmail = (value) => EMAIL_RE.test((value || '').trim());
 
 export function validateLogin(form) {
   const errors = {};
-  if (!form.username.trim()) errors.username = 'Enter your username.';
+  if (!form.login.trim()) errors.login = 'Enter your username or email.';
   if (!form.password) errors.password = 'Enter your password.';
   return errors;
 }

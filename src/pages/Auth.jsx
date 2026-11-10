@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { displayName, useAuth } from '../auth/AuthContext.jsx';
 import { takeIntent, takeRedirectError } from '../auth/msal.js';
-import { displayAccountName, namesFromAccount } from '../auth/names.js';
+import { displayAccountName, microsoftEmail, namesFromAccount } from '../auth/names.js';
 import { LIMITS, isEmail, passwordChecks, validateLogin, validateRegister } from '../auth/validation.js';
 import { useDocumentTitle } from '../hooks/useApi.js';
 import Logo from '../components/Logo.jsx';
@@ -89,6 +89,9 @@ export default function Auth({ mode }) {
       setMsPhase('idle');
       if (err.status === 404 || err.code === 'not_registered') {
         navigate('/register', { replace: true, state: { notice: 'not_registered', from } });
+      } else if (err.code === 'microsoft_expired') {
+        // Microsoft session ended: go straight back through Microsoft sign-in.
+        goToMicrosoft('login');
       } else {
         setMsError(err);
       }
@@ -138,7 +141,7 @@ export default function Auth({ mode }) {
             ) : (
               <MicrosoftButton label="Continue with Microsoft" onClick={() => goToMicrosoft('login')} busy={msPhase === 'redirecting'} />
             )}
-            <Divider>or sign in with username</Divider>
+            <Divider>or sign in with username or email</Divider>
           </>
         )}
         <LoginForm
@@ -150,7 +153,7 @@ export default function Auth({ mode }) {
       </div>
     );
   } else if (microsoftEnabled && account) {
-    // Signing up with a connected Microsoft account: no password, email pre-filled from Microsoft.
+    // Signing up with a connected Microsoft account: no password, names and email pre-filled from Microsoft.
     body = (
       <div className="auth-stack">
         {notice === 'not_registered' && (
@@ -168,6 +171,7 @@ export default function Auth({ mode }) {
               finish(u, `Welcome to KMArtists, ${u.first_name || u.username}!`);
             } catch (err) {
               if (err.code === 'already_registered') return goTo('/login', { notice: 'already_registered' });
+              if (err.code === 'microsoft_expired') return goToMicrosoft('register');
               throw err;
             }
           }}
@@ -295,9 +299,16 @@ function useAuthForm(initial, validate) {
     try {
       await onSubmit(form);
     } catch (err) {
-      if (err.field) {
+      // Backend errors look like {"error": {code, message, field}}. Show the message under
+      // that field when the form has it; otherwise (no field, or a field not on this form) on top.
+      const shown = err.field && document.querySelector(`[data-field="${CSS.escape(err.field)}"]`);
+      if (shown) {
         setErrors({ [err.field]: err.message });
         focusField(err.field);
+      } else if (err.field) {
+        // Name the field, since "This field is required." alone wouldn't say which one.
+        const label = err.field.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
+        setServerError({ status: err.status, message: `${label}: ${err.message}` });
       } else {
         setServerError(err);
       }
@@ -309,13 +320,13 @@ function useAuthForm(initial, validate) {
 }
 
 function LoginForm({ onSubmit }) {
-  const { form, errors, serverError, busy, set, handleSubmit } = useAuthForm({ username: '', password: '' }, validateLogin);
+  const { form, errors, serverError, busy, set, handleSubmit } = useAuthForm({ login: '', password: '' }, validateLogin);
 
   return (
     <form className="auth-stack" onSubmit={handleSubmit(onSubmit)} noValidate>
       <FormError error={serverError} />
-      <Field label="Username" htmlFor="username" error={errors.username}>
-        <input id="username" data-field="username" className="input" autoComplete="username" maxLength={LIMITS.username} value={form.username} onChange={set('username')} aria-invalid={Boolean(errors.username)} />
+      <Field label="Username or email" htmlFor="login" error={errors.login}>
+        <input id="login" data-field="login" className="input" autoComplete="username" maxLength={LIMITS.email} value={form.login} onChange={set('login')} aria-invalid={Boolean(errors.login)} />
       </Field>
       <Field label="Password" htmlFor="password" error={errors.password}>
         <PasswordInput id="password" autoComplete="current-password" value={form.password} onChange={set('password')} invalid={Boolean(errors.password)} />
@@ -358,7 +369,7 @@ function RegisterForm({ microsoftAccount, onSwitchAccount, onUseEmail, onSubmit 
       )}
       <FormError error={serverError} />
 
-      <Field label="Username" htmlFor="username" error={errors.username} hint="Letters, numbers and @ . + - _ only.">
+      <Field label="Username" htmlFor="username" error={errors.username} hint="Letters, numbers and . + - _ (no @ or spaces).">
         <input id="username" data-field="username" className="input" autoComplete="username" maxLength={LIMITS.username} value={form.username} onChange={set('username')} aria-invalid={Boolean(errors.username)} autoFocus={Boolean(microsoftAccount)} />
       </Field>
 
@@ -412,17 +423,11 @@ function RegisterForm({ microsoftAccount, onSwitchAccount, onUseEmail, onSubmit 
       </button>
       {microsoftAccount && (
         <button type="button" className="link-btn" onClick={onUseEmail}>
-          Sign up with email and password instead
+          Sign up with a password instead
         </button>
       )}
     </form>
   );
-}
-
-// The account's email: the `email` claim if the tenant sends it, else the sign-in name (usually the email).
-function microsoftEmail(account) {
-  const claims = account.idTokenClaims || {};
-  return claims.email || claims.preferred_username || account.username || '';
 }
 
 function initialRegisterForm(account) {
@@ -434,7 +439,7 @@ function initialRegisterForm(account) {
   const local = (claims.preferred_username || account.username || '').split('@')[0];
   return {
     ...blank,
-    username: local.replace(/[^\w.@+-]/g, '').slice(0, LIMITS.username),
+    username: local.replace(/[^\p{L}\p{N}_.+-]/gu, '').slice(0, LIMITS.username),
     first_name: first.slice(0, LIMITS.first_name),
     last_name: last.slice(0, LIMITS.last_name),
     email: isEmail(microsoftEmail(account)) ? microsoftEmail(account).trim().slice(0, LIMITS.email) : '',

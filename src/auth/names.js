@@ -29,3 +29,9 @@ export function displayAccountName(account) {
   const { first, last } = namesFromAccount(account);
   return [first, last].filter(Boolean).join(' ') || account?.username || '';
 }
+
+// The account's email: the `email` claim if the tenant sends it, else the sign-in name (usually the email).
+export function microsoftEmail(account) {
+  const claims = account?.idTokenClaims || {};
+  return (claims.email || claims.preferred_username || account?.username || '').trim();
+}

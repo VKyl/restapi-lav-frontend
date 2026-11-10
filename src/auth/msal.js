@@ -82,9 +82,13 @@ export async function getMicrosoftToken() {
   const account = getAccount();
   if (!account) return null;
   try {
-    const { idToken } = await msal.acquireTokenSilent({ scopes, account });
+    // forceRefresh: ID tokens last ~1 hour and MSAL would otherwise hand back an expired
+    // cached one. This is only called on /login and /register, so the extra request is cheap.
+    const { idToken } = await msal.acquireTokenSilent({ scopes, account, forceRefresh: true });
     return idToken || null;
-  } catch {
+  } catch (err) {
+    // Usually means the Microsoft session itself ended and the user has to sign in again.
+    console.warn('Could not refresh the Microsoft token:', err);
     return null;
   }
 }

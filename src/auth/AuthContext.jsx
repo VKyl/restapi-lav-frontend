@@ -1,10 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client.js';
 import { clearMicrosoftSession, getAccount, getMicrosoftToken, microsoftEnabled, startMicrosoftSignIn } from './msal.js';
-import { SESSION_EVENT, getSession, setSession } from './session.js';
+import { microsoftEmail } from './names.js';
+import { SESSION_EVENT, getSession, sessionFromTokens, setSession } from './session.js';
 
 // Two separate things:
-// - `user`: the KMArtists user, from the backend session ({ token, user }).
+// - `user`: the KMArtists user, read from the backend's access token (see session.js).
 // - `account`: a Microsoft account connected in this browser (only for the Microsoft option).
 
 const AuthContext = createContext(null);
@@ -24,9 +25,11 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
+  // Backend answers { token, refresh_token }; the user comes from the token's payload.
   const start = (res) => {
-    setSession({ token: res.token, user: res.user });
-    return res.user;
+    const session = sessionFromTokens(res);
+    setSession(session);
+    return session.user;
   };
 
   const microsoftToken = async () => {
@@ -35,9 +38,14 @@ export function AuthProvider({ children }) {
     return token;
   };
 
-  const loginWithPassword = useCallback(async ({ username, password }) => start(await api.auth.login({ username, password })), []);
+  // `login` is a username or an email.
+  const loginWithPassword = useCallback(async ({ login, password }) => start(await api.auth.login({ login: login.trim(), password })), []);
 
-  const loginWithMicrosoft = useCallback(async () => start(await api.auth.login({ microsoft_token: await microsoftToken() })), []);
+  // Microsoft sign-in sends the account's email as `login`.
+  const loginWithMicrosoft = useCallback(async () => {
+    const microsoft_token = await microsoftToken();
+    return start(await api.auth.login({ login: microsoftEmail(getAccount()), microsoft_token }));
+  }, []);
 
   const register = useCallback(async (form) => start(await api.auth.register(form)), []);
 
