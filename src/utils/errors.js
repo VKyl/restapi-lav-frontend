@@ -25,6 +25,8 @@ export function focusField(field) {
 export function friendlyMessage(error) {
   if (!error) return '';
   if (error.status === 0) return error.message;
+  if (error.status === 401) return 'Your session has ended. Please sign in again.';
+  if (error.status === 403) return 'You don’t have permission to do that.';
   if (error.status === 404) return 'We couldn’t find what you were looking for.';
   if (error.status >= 500) return 'The server hit a wrong note. Please try again in a moment.';
   return error.message || 'Something went wrong.';

@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client.js';
+import { useAuth } from '../auth/AuthContext.jsx';
+import { sameId } from '../auth/RequireAuth.jsx';
 import { useApi, useDocumentTitle } from '../hooks/useApi.js';
 import Icon from '../components/Icon.jsx';
 import Chip from '../components/Chip.jsx';
@@ -22,6 +24,7 @@ export default function ArtistPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
+  const { user } = useAuth();
   const { data, error, loading, reload } = useApi((signal) => api.artists.get(id, { signal }), [id]);
   const [confirm, setConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -50,6 +53,12 @@ export default function ArtistPage() {
     );
   }
 
+  // Contributors "Edit" their article; everyone else is invited to "Improve" it (and becomes a contributor).
+  // Signed-out visitors are sent to sign in first. Only the author can delete; `author` is null when
+  // the author's account is gone, and then nobody can.
+  const isContributor = Boolean(user) && data.contributors.some((c) => sameId(c.id, user.id));
+  const canDelete = Boolean(user) && sameId(data.author?.id, user.id);
+
   return (
     <div className="page">
       <section className="artist-hero" style={{ '--h': hueFor(data.artist) }}>
@@ -71,12 +80,16 @@ export default function ArtistPage() {
               </div>
             </div>
             <div className="artist-hero-actions">
-              <Link to={`/artists/${id}/edit`} className="btn btn-primary">
-                <Icon name="edit" size={16} /> Edit
-              </Link>
-              <button className="btn btn-ghost btn-icon-danger" onClick={() => setConfirm(true)} aria-label="Delete article">
-                <Icon name="trash" size={16} />
-              </button>
+              {isContributor && (
+                <Link to={`/artists/${id}/edit`} className="btn btn-primary">
+                  <Icon name="edit" size={16} /> Edit
+                </Link>
+              )}
+              {canDelete && (
+                <button className="btn btn-ghost btn-icon-danger" onClick={() => setConfirm(true)} aria-label="Delete article">
+                  <Icon name="trash" size={16} />
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -134,13 +147,16 @@ export default function ArtistPage() {
                   <Link to={`/users/${c.id}`} className="contributor">
                     <Avatar name={c.name} size={32} />
                     <span>{c.name}</span>
+                    {sameId(c.id, data.author?.id) && <span className="muted small">· author</span>}
                   </Link>
                 </li>
               ))}
             </ul>
-            <Link to={`/artists/${id}/edit`} className="btn btn-ghost btn-block btn-sm">
-              <Icon name="edit" size={14} /> Improve this article
-            </Link>
+            {!isContributor && (
+              <Link to={`/artists/${id}/edit`} className="btn btn-ghost btn-block btn-sm">
+                <Icon name="edit" size={14} /> Improve this article
+              </Link>
+            )}
           </div>
         </aside>
       </div>

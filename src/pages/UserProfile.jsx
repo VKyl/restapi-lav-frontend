@@ -1,5 +1,7 @@
 import { Link, useParams } from 'react-router-dom';
 import { api } from '../api/client.js';
+import { useAuth } from '../auth/AuthContext.jsx';
+import { sameId } from '../auth/RequireAuth.jsx';
 import { useApi, useDocumentTitle } from '../hooks/useApi.js';
 import Icon from '../components/Icon.jsx';
 import Chip from '../components/Chip.jsx';
@@ -10,6 +12,7 @@ import { hueFor } from '../utils/format.js';
 
 export default function UserProfile() {
   const { id } = useParams();
+  const { user: me } = useAuth();
   const user = useApi((signal) => api.users.get(id, { signal }), [id]);
   const articles = useApi((signal) => api.users.articles(id, { take: 50 }, { signal }), [id]);
   useDocumentTitle(user.data?.name || 'Profile');
@@ -47,9 +50,11 @@ export default function UserProfile() {
               )}
             </div>
           </div>
-          <Link to={`/users/${id}/edit`} className="btn btn-ghost">
-            <Icon name="edit" size={16} /> Edit profile
-          </Link>
+          {me && sameId(me.id, id) && (
+            <Link to={`/users/${id}/edit`} className="btn btn-ghost">
+              <Icon name="edit" size={16} /> Edit profile
+            </Link>
+          )}
         </div>
       </section>
 

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client.js';
+import { useAuth } from '../auth/AuthContext.jsx';
+import { sameId } from '../auth/RequireAuth.jsx';
 import { useDocumentTitle } from '../hooks/useApi.js';
 import Icon from '../components/Icon.jsx';
 import Field from '../components/Field.jsx';
@@ -39,6 +41,8 @@ export default function ArtistForm() {
   const isEdit = Boolean(id);
   const navigate = useNavigate();
   const toast = useToast();
+  const { user } = useAuth();
+  const [isContributor, setIsContributor] = useState(false);
 
   const [artist, setArtist] = useState('');
   const [genres, setGenres] = useState([]);
@@ -59,10 +63,12 @@ export default function ArtistForm() {
         setArtist(a.artist);
         setGenres(a.genres);
         setSections(a.body.map((s) => newSection(s.title, s.content)));
+        setIsContributor(a.contributors.some((c) => sameId(c.id, user?.id)));
         setLoadState({ loading: false, error: null });
       })
       .catch((err) => err.name !== 'AbortError' && setLoadState({ loading: false, error: err }));
     return () => ctrl.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, isEdit]);
 
   useEffect(() => {
@@ -127,11 +133,13 @@ export default function ArtistForm() {
         <Icon name="arrowLeft" size={16} /> {isEdit ? 'Back to article' : 'All artists'}
       </Link>
       <header className="form-header">
-        <span className="eyebrow">{isEdit ? 'Editing article' : 'New article'}</span>
+        <span className="eyebrow">{!isEdit ? 'New article' : isContributor ? 'Editing article' : 'Improving article'}</span>
         <h1>{isEdit ? artist : 'Write about an artist'}</h1>
         <p className="lead">
           {isEdit
-            ? 'Update the genres or improve any section. Your name will be added to the contributors.'
+            ? isContributor
+              ? 'Update the genres or improve any section.'
+              : 'Update the genres or improve any section. Your name will be added to the contributors.'
             : 'Split the story into sections, like Biography, Discography or Legacy. You can reorder them any time.'}
         </p>
       </header>

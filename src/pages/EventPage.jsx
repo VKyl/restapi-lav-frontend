@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client.js';
+import { useAuth } from '../auth/AuthContext.jsx';
+import { sameId } from '../auth/RequireAuth.jsx';
 import { useApi, useDocumentTitle } from '../hooks/useApi.js';
 import Icon from '../components/Icon.jsx';
 import Avatar from '../components/Avatar.jsx';
@@ -15,6 +17,7 @@ export default function EventPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
+  const { user } = useAuth();
   const { data, error, loading, reload } = useApi((signal) => api.events.get(id, { signal }), [id]);
   const [confirm, setConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -44,6 +47,8 @@ export default function EventPage() {
   }
 
   const past = isPast(data.date);
+  // Only the creator can manage an event, and only edit it before it happens.
+  const isCreator = Boolean(user) && sameId(data.creator?.id, user.id);
 
   return (
     <div className="container page">
@@ -66,16 +71,18 @@ export default function EventPage() {
             </span>
           </div>
         </div>
-        <div className="event-hero-actions">
-          {!past && (
-            <Link to={`/events/${id}/edit`} className="btn btn-primary">
-              <Icon name="edit" size={16} /> Edit
-            </Link>
-          )}
-          <button className="btn btn-ghost btn-icon-danger" onClick={() => setConfirm(true)} aria-label="Delete event">
-            <Icon name="trash" size={16} />
-          </button>
-        </div>
+        {isCreator && (
+          <div className="event-hero-actions">
+            {!past && (
+              <Link to={`/events/${id}/edit`} className="btn btn-primary">
+                <Icon name="edit" size={16} /> Edit
+              </Link>
+            )}
+            <button className="btn btn-ghost btn-icon-danger" onClick={() => setConfirm(true)} aria-label="Delete event">
+              <Icon name="trash" size={16} />
+            </button>
+          </div>
+        )}
       </section>
 
       <div className="event-layout">

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import Logo from './Logo.jsx';
 import Icon from './Icon.jsx';
+import UserMenu from './UserMenu.jsx';
 
 const NAV = [
   { to: '/artists', label: 'Artists', icon: 'book' },
@@ -37,6 +38,7 @@ export default function Layout() {
             <Link to="/artists/new" className="btn btn-primary btn-sm hide-sm">
               <Icon name="plus" size={16} /> Write article
             </Link>
+            <UserMenu />
             <button className="icon-btn menu-btn" onClick={() => setOpen((o) => !o)} aria-label="Toggle menu" aria-expanded={open}>
               <Icon name={open ? 'x' : 'menu'} />
             </button>
