@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { displayName, useAuth } from '../auth/AuthContext.jsx';
 import { takeIntent, takeRedirectError } from '../auth/msal.js';
 import { displayAccountName, namesFromAccount } from '../auth/names.js';
-import { LIMITS, passwordChecks, validateLogin, validateRegister } from '../auth/validation.js';
+import { LIMITS, isEmail, passwordChecks, validateLogin, validateRegister } from '../auth/validation.js';
 import { useDocumentTitle } from '../hooks/useApi.js';
 import Logo from '../components/Logo.jsx';
 import Icon from '../components/Icon.jsx';
@@ -150,7 +150,7 @@ export default function Auth({ mode }) {
       </div>
     );
   } else if (microsoftEnabled && account) {
-    // Signing up with a connected Microsoft account: no password, email comes from Microsoft.
+    // Signing up with a connected Microsoft account: no password, email pre-filled from Microsoft.
     body = (
       <div className="auth-stack">
         {notice === 'not_registered' && (
@@ -330,14 +330,16 @@ function LoginForm({ onSubmit }) {
 
 function RegisterForm({ microsoftAccount, onSwitchAccount, onUseEmail, onSubmit }) {
   const withPassword = !microsoftAccount;
+  // Email from Microsoft is locked; if Microsoft didn't provide a usable one, the user types it.
+  const emailLocked = Boolean(microsoftAccount) && isEmail(microsoftEmail(microsoftAccount));
   const { form, errors, serverError, busy, set, handleSubmit } = useAuthForm(
     () => initialRegisterForm(microsoftAccount),
     (f) => validateRegister(f, { withPassword }),
   );
 
   const submit = (f) => {
-    const payload = { username: f.username.trim(), first_name: f.first_name.trim(), last_name: f.last_name.trim() };
-    if (withPassword) Object.assign(payload, { email: f.email.trim(), password: f.password, password_confirmation: f.password_confirmation });
+    const payload = { username: f.username.trim(), first_name: f.first_name.trim(), last_name: f.last_name.trim(), email: f.email.trim() };
+    if (withPassword) Object.assign(payload, { password: f.password, password_confirmation: f.password_confirmation });
     return onSubmit(payload);
   };
 
@@ -369,11 +371,24 @@ function RegisterForm({ microsoftAccount, onSwitchAccount, onUseEmail, onSubmit 
         </Field>
       </div>
 
+      <Field label="Email" htmlFor="email" error={errors.email} hint={emailLocked ? 'From your Microsoft account.' : undefined}>
+        <input
+          id="email"
+          data-field="email"
+          type="email"
+          className="input"
+          autoComplete="email"
+          placeholder="name@example.com"
+          maxLength={LIMITS.email}
+          value={form.email}
+          onChange={set('email')}
+          readOnly={emailLocked}
+          aria-invalid={Boolean(errors.email)}
+        />
+      </Field>
+
       {withPassword && (
         <>
-          <Field label="Email" htmlFor="email" error={errors.email}>
-            <input id="email" data-field="email" type="email" className="input" autoComplete="email" placeholder="name@example.com" maxLength={LIMITS.email} value={form.email} onChange={set('email')} aria-invalid={Boolean(errors.email)} />
-          </Field>
           <Field label="Password" htmlFor="password" error={errors.password}>
             <PasswordInput id="password" autoComplete="new-password" value={form.password} onChange={set('password')} invalid={Boolean(errors.password)} />
             <PasswordStrength password={form.password} />
@@ -404,6 +419,12 @@ function RegisterForm({ microsoftAccount, onSwitchAccount, onUseEmail, onSubmit 
   );
 }
 
+// The account's email: the `email` claim if the tenant sends it, else the sign-in name (usually the email).
+function microsoftEmail(account) {
+  const claims = account.idTokenClaims || {};
+  return claims.email || claims.preferred_username || account.username || '';
+}
+
 function initialRegisterForm(account) {
   const blank = { username: '', first_name: '', last_name: '', email: '', password: '', password_confirmation: '' };
   if (!account) return blank;
@@ -416,6 +437,7 @@ function initialRegisterForm(account) {
     username: local.replace(/[^\w.@+-]/g, '').slice(0, LIMITS.username),
     first_name: first.slice(0, LIMITS.first_name),
     last_name: last.slice(0, LIMITS.last_name),
+    email: isEmail(microsoftEmail(account)) ? microsoftEmail(account).trim().slice(0, LIMITS.email) : '',
   };
 }
 

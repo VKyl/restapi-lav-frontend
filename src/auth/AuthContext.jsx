@@ -42,8 +42,8 @@ export function AuthProvider({ children }) {
   const register = useCallback(async (form) => start(await api.auth.register(form)), []);
 
   const registerWithMicrosoft = useCallback(
-    async ({ username, first_name, last_name }) =>
-      start(await api.auth.register({ username, first_name, last_name, microsoft_token: await microsoftToken() })),
+    async ({ username, first_name, last_name, email }) =>
+      start(await api.auth.register({ username, first_name, last_name, email, microsoft_token: await microsoftToken() })),
     [],
   );
 

@@ -69,8 +69,8 @@ export const api = {
   auth: {
     // Body is either { username, password } or { microsoft_token }. Returns { token, user }.
     login: (body) => request('POST', '/login/', { body }),
-    // Body is { username, first_name, last_name } plus either
-    // { email, password, password_confirmation } or { microsoft_token }. Returns { token, user }.
+    // Body is { username, first_name, last_name, email } plus either
+    // { password, password_confirmation } or { microsoft_token }. Returns { token, user }.
     register: (body) => request('POST', '/register/', { body }),
   },
   artists: {

@@ -26,7 +26,7 @@ export function passwordChecks(pw) {
 const tooLong = (value, field) => value.length > LIMITS[field] && `Keep it under ${LIMITS[field]} characters.`;
 
 // Returns { field: message } for every problem found. Empty object = valid.
-// `withPassword: false` is the Microsoft sign-up, where email comes from Microsoft.
+// `withPassword: false` is the Microsoft sign-up: email still required, no password.
 export function validateRegister(form, { withPassword = true } = {}) {
   const errors = {};
   const username = form.username.trim();
@@ -39,12 +39,12 @@ export function validateRegister(form, { withPassword = true } = {}) {
     if (msg) errors[field] = msg;
   }
 
-  if (!withPassword) return errors;
-
   const email = form.email.trim();
   if (!email) errors.email = 'Enter your email.';
   else if (tooLong(email, 'email')) errors.email = tooLong(email, 'email');
   else if (!EMAIL_RE.test(email)) errors.email = 'Enter a valid email, like name@example.com.';
+
+  if (!withPassword) return errors;
 
   const pw = form.password;
   if (!pw) errors.password = 'Create a password.';
@@ -59,6 +59,8 @@ export function validateRegister(form, { withPassword = true } = {}) {
 
   return errors;
 }
+
+export const isEmail = (value) => EMAIL_RE.test((value || '').trim());
 
 export function validateLogin(form) {
   const errors = {};

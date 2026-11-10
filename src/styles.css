@@ -1250,6 +1250,8 @@ input[type='datetime-local']::-webkit-calendar-picker-indicator { filter: invert
 .auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 .optional { margin-left: 4px; font-size: 0.75rem; font-weight: 500; color: var(--muted); }
 .input[aria-invalid='true'] { border-color: var(--red); }
+.input[readonly] { color: var(--text-2); background: rgb(255 255 255 / 0.03); border-style: dashed; cursor: default; }
+.input[readonly]:focus { border-color: var(--border-strong); box-shadow: none; }
 
 .input-wrap { position: relative; }
 .input-wrap .input { padding-right: 76px; }
