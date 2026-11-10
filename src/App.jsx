@@ -11,10 +11,13 @@ import FindBand from './pages/FindBand.jsx';
 import UserProfile from './pages/UserProfile.jsx';
 import ProfileForm from './pages/ProfileForm.jsx';
 import NotFound from './pages/NotFound.jsx';
+import Auth from './pages/Auth.jsx';
 
 export default function App() {
   return (
     <Routes>
+      <Route path="login" element={<Auth mode="login" />} />
+      <Route path="register" element={<Auth mode="register" />} />
       <Route element={<Layout />}>
         <Route index element={<Home />} />
         <Route path="artists" element={<ArtistsList />} />

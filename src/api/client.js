@@ -1,6 +1,8 @@
 // Thin wrapper around fetch that speaks the backend's conventions:
 // trailing-slash URLs, JSON bodies, and errors shaped {"error": {code, message, field?}}.
 
+import { getSession, setSession } from '../auth/session.js';
+
 const BASE = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
 
 export class ApiError extends Error {
@@ -24,12 +26,17 @@ async function request(method, path, { params, body, signal } = {}) {
     if (query) url += `?${query}`;
   }
 
+  const headers = {};
+  if (body) headers['Content-Type'] = 'application/json';
+  const token = getSession()?.token;
+  if (token) headers.Authorization = `Bearer ${token}`;
+
   let res;
   try {
     res = await fetch(url, {
       method,
       signal,
-      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      headers,
       body: body ? JSON.stringify(body) : undefined,
     });
   } catch (err) {
@@ -50,6 +57,8 @@ async function request(method, path, { params, body, signal } = {}) {
       data = null;
     }
   }
+  // Session expired or revoked: sign the user out locally.
+  if (res.status === 401 && token) setSession(null);
   if (!res.ok) throw new ApiError(res.status, data?.error || {});
   return data;
 }
@@ -57,6 +66,13 @@ async function request(method, path, { params, body, signal } = {}) {
 const enc = encodeURIComponent;
 
 export const api = {
+  auth: {
+    // Body is either { username, password } or { microsoft_token }. Returns { token, user }.
+    login: (body) => request('POST', '/login/', { body }),
+    // Body is { username, first_name, last_name } plus either
+    // { email, password, password_confirmation } or { microsoft_token }. Returns { token, user }.
+    register: (body) => request('POST', '/register/', { body }),
+  },
   artists: {
     list: (params, opts) => request('GET', '/artists/', { params, ...opts }),
     get: (id, opts) => request('GET', `/artists/${enc(id)}/`, opts),
