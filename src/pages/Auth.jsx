@@ -113,7 +113,7 @@ export default function Auth({ mode }) {
   if (user) {
     body = (
       <div className="auth-stack">
-        <AccountRow name={displayName(user)} detail={user.email} />
+        <AccountRow name={displayName(user)} detail={`@${user.username}`} />
         <p className="muted">You’re already signed in.</p>
         <Link to="/" className="btn btn-primary btn-lg btn-block">
           Go to KMArtists <Icon name="arrowRight" size={18} />

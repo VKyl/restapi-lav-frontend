@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client.js';
+import { useAuth } from '../auth/AuthContext.jsx';
+import { sameId } from '../auth/RequireAuth.jsx';
 import { useDocumentTitle } from '../hooks/useApi.js';
 import Icon from '../components/Icon.jsx';
 import Field from '../components/Field.jsx';
 import TagInput from '../components/TagInput.jsx';
 import { useToast } from '../components/Toast.jsx';
-import { ErrorState, FormError, Loader } from '../components/States.jsx';
+import { ErrorState, FormError, Loader, NotAllowed } from '../components/States.jsx';
 import { ComingSoon } from './FindBand.jsx';
 import { errorFor, focusField } from '../utils/errors.js';
 
@@ -16,6 +18,8 @@ export default function ProfileForm() {
   const { id } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
+  const { user } = useAuth();
+  const isOwner = sameId(user?.id, id);
   const [form, setForm] = useState(null);
   const [loadError, setLoadError] = useState(null);
   const [error, setError] = useState(null);
@@ -23,6 +27,7 @@ export default function ProfileForm() {
   useDocumentTitle('Edit profile');
 
   useEffect(() => {
+    if (!isOwner) return undefined;
     const ctrl = new AbortController();
     api.users
       .get(id, { signal: ctrl.signal })
@@ -37,7 +42,7 @@ export default function ProfileForm() {
       )
       .catch((err) => err.name !== 'AbortError' && setLoadError(err));
     return () => ctrl.abort();
-  }, [id]);
+  }, [id, isOwner]);
 
   useEffect(() => {
     if (error?.field) focusField(error.field);
@@ -67,6 +72,15 @@ export default function ProfileForm() {
     }
   }
 
+  if (!isOwner) {
+    return (
+      <div className="container page page-narrow">
+        <NotAllowed backTo={`/users/${id}`} backLabel="Back to profile">
+          You can only edit your own profile.
+        </NotAllowed>
+      </div>
+    );
+  }
   if (loadError) {
     return (
       <div className="container page">

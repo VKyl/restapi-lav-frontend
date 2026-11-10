@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client.js';
+import { useAuth } from '../auth/AuthContext.jsx';
+import { sameId } from '../auth/RequireAuth.jsx';
 import { useDocumentTitle } from '../hooks/useApi.js';
 import Icon from '../components/Icon.jsx';
 import Field from '../components/Field.jsx';
 import { useToast } from '../components/Toast.jsx';
-import { EmptyState, ErrorState, FormError, Loader } from '../components/States.jsx';
+import { EmptyState, ErrorState, FormError, Loader, NotAllowed } from '../components/States.jsx';
 import { errorFor, focusField } from '../utils/errors.js';
 import { isPast, toLocalInputValue } from '../utils/format.js';
 
@@ -27,8 +29,9 @@ export default function EventForm() {
   const isEdit = Boolean(id);
   const navigate = useNavigate();
   const toast = useToast();
+  const { user } = useAuth();
   const [form, setForm] = useState(EMPTY);
-  const [load, setLoad] = useState({ loading: isEdit, error: null, past: false });
+  const [load, setLoad] = useState({ loading: isEdit, error: null, past: false, creatorId: null });
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
 
@@ -47,9 +50,9 @@ export default function EventForm() {
           description: e.description,
           contact_info: e.contact_info,
         });
-        setLoad({ loading: false, error: null, past: isPast(e.date) });
+        setLoad({ loading: false, error: null, past: isPast(e.date), creatorId: e.creator?.id });
       })
-      .catch((err) => err.name !== 'AbortError' && setLoad({ loading: false, error: err, past: false }));
+      .catch((err) => err.name !== 'AbortError' && setLoad({ loading: false, error: err, past: false, creatorId: null }));
     return () => ctrl.abort();
   }, [id, isEdit]);
 
@@ -101,6 +104,17 @@ export default function EventForm() {
   if (load.error) return <div className="container page"><ErrorState error={load.error} /></div>;
 
   const cancelTo = isEdit ? `/events/${id}` : '/events';
+
+  // Only the event's creator can edit it.
+  if (isEdit && !sameId(load.creatorId, user?.id)) {
+    return (
+      <div className="container page page-narrow">
+        <NotAllowed backTo={cancelTo} backLabel="Back to event">
+          Only the person who posted this event can edit it.
+        </NotAllowed>
+      </div>
+    );
+  }
 
   if (load.past) {
     return (

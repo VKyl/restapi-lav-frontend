@@ -18,14 +18,14 @@ export class ApiError extends Error {
 // Sign-in routes never carry the access token.
 const PUBLIC_PATHS = ['/login/', '/register/', '/refresh/'];
 // Refresh a little before expiry so a request doesn't die in flight.
-const REFRESH_MARGIN_MS = 30_000;
+export const REFRESH_MARGIN_MS = 30_000;
 
 // One refresh at a time: parallel requests all wait for the same one.
 let refreshing = null;
 
 // Swaps the refresh token for a new pair. Returns the new access token, or null.
 // Signs out only when the backend rejects the refresh token, not on network/server errors.
-function refreshSession() {
+export function refreshSession() {
   refreshing ??= (async () => {
     const refresh_token = getSession()?.refresh_token;
     if (!refresh_token) return null;
@@ -113,7 +113,7 @@ const enc = encodeURIComponent;
 export const api = {
   auth: {
     // All return { token, refresh_token }; the user is inside the token (see auth/session.js).
-    // Body is { login, password } or { login, microsoft_token }; `login` = username or email.
+    // Body is { login, password } (`login` = username or email) or { microsoft_token }.
     login: (body) => request('POST', '/login/', { body }),
     // Body is { username, first_name, last_name, email } plus either
     // { password, password_confirmation } or { microsoft_token }.

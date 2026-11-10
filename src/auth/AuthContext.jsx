@@ -1,8 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { api } from '../api/client.js';
+import { REFRESH_MARGIN_MS, api, refreshSession } from '../api/client.js';
 import { clearMicrosoftSession, getAccount, getMicrosoftToken, microsoftEnabled, startMicrosoftSignIn } from './msal.js';
-import { microsoftEmail } from './names.js';
-import { SESSION_EVENT, getSession, sessionFromTokens, setSession } from './session.js';
+import { SESSION_EVENT, expiresIn, getSession, sessionFromTokens, setSession } from './session.js';
 
 // Two separate things:
 // - `user`: the KMArtists user, read from the backend's access token (see session.js).
@@ -25,6 +24,36 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
+  // Calls /refresh/ just before the access token expires, so it's renewed even when idle.
+  // A successful refresh updates the session, which reschedules this for the new token.
+  const token = session?.token;
+  const [retry, setRetry] = useState(0);
+  useEffect(() => {
+    if (!token) return undefined;
+    let timer;
+    const run = async () => {
+      const fresh = await refreshSession();
+      // Network or server hiccup (still signed in): try again shortly.
+      if (!fresh && getSession()) timer = setTimeout(() => setRetry((n) => n + 1), 30_000);
+    };
+    timer = setTimeout(run, Math.max(0, expiresIn(token) - REFRESH_MARGIN_MS));
+
+    // Timers stall while the laptop sleeps or the tab is in the background: catch up on return.
+    const onWake = () => {
+      if (document.visibilityState === 'visible' && expiresIn(token) <= REFRESH_MARGIN_MS) {
+        clearTimeout(timer);
+        run();
+      }
+    };
+    document.addEventListener('visibilitychange', onWake);
+    window.addEventListener('focus', onWake);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('visibilitychange', onWake);
+      window.removeEventListener('focus', onWake);
+    };
+  }, [token, retry]);
+
   // Backend answers { token, refresh_token }; the user comes from the token's payload.
   const start = (res) => {
     const session = sessionFromTokens(res);
@@ -41,10 +70,10 @@ export function AuthProvider({ children }) {
   // `login` is a username or an email.
   const loginWithPassword = useCallback(async ({ login, password }) => start(await api.auth.login({ login: login.trim(), password })), []);
 
-  // Microsoft sign-in sends the account's email as `login`.
+  // Microsoft sign-in sends only the Microsoft ID token; the backend finds the user from it.
   const loginWithMicrosoft = useCallback(async () => {
     const microsoft_token = await microsoftToken();
-    return start(await api.auth.login({ login: microsoftEmail(getAccount()), microsoft_token }));
+    return start(await api.auth.login({ microsoft_token }));
   }, []);
 
   const register = useCallback(async (form) => start(await api.auth.register(form)), []);

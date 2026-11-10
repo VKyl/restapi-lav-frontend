@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import Icon from './Icon.jsx';
 import { friendlyMessage } from '../utils/errors.js';
 
@@ -44,12 +45,29 @@ export function ErrorState({ error, onRetry, title = 'Something went off-key' })
   );
 }
 
+// Shown when a signed-in user opens something only someone else may change.
+export function NotAllowed({ children, backTo, backLabel }) {
+  return (
+    <EmptyState
+      icon="alert"
+      title="You can’t edit this"
+      action={
+        <Link to={backTo} className="btn btn-ghost">
+          {backLabel}
+        </Link>
+      }
+    >
+      {children}
+    </EmptyState>
+  );
+}
+
 export function FormError({ error }) {
   if (!error) return null;
   return (
     <div className="form-error" role="alert">
       <Icon name="alert" size={18} />
-      <span>{error.status >= 500 || error.status === 0 ? friendlyMessage(error) : error.message}</span>
+      <span>{error.status >= 500 || [0, 401, 403].includes(error.status) ? friendlyMessage(error) : error.message}</span>
     </div>
   );
 }
